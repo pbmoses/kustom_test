@@ -1,0 +1,32 @@
+kind: Job
+apiVersion: batch/v1
+metadata:
+  name: oauth-minimum-role
+  namespace: acs-rox
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+spec:
+  ttlSecondsAfterFinished: 60
+  template:
+    metadata:
+      namespace: acs-rox
+    spec:
+      containers:
+        - name: sample-batch-job
+          image: registry.access.redhat.com/ubi8/ubi:8.6-903.1661794351
+          env:
+            - name: ACS-AUTH-ROLES
+              valueFrom:
+                configMapKeyRef:
+                  name: acs-auth-roles
+                  key: authroles.json           
+            - name: ACS_ADMIN_PASSWORD
+              valueFrom: 
+                secretKeyRef:
+                  name: central-htpasswd
+                  key: password
+            - name: CENTRAL
+              value: https://central-acs-rox.apps.pmo-sno7.pmo.ocp.philmoses.com:443
+          command: [ "curl" ]
+          args: ["-k", "-u", "admin:$(ACS_ADMIN_PASSWORD)", "--header", "Content-Type: application/json", "-X", "POST", "$(CENTRAL)/v1/groupsbatch", "-d", "$(ACS-AUTH-ROLES)"]
+      restartPolicy: Never
